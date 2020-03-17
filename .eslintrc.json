@@ -26,7 +26,7 @@
         "no-underscore-dangle": "off",
         "strict": ["error", "global"],
         "class-methods-use-this": "off",
-        "object-curly-newline": ["error", { "multiline": true }],
+        "object-curly-newline": ["off"],
         "global-require": "off",
         "arrow-parens": ["error", "as-needed"],
         "no-param-reassign": ["error", { "props": false }],

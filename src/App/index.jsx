@@ -9,6 +9,7 @@ import Title from '../Components/Title';
 import { GradientBackground } from '../Shared';
 import Card from '../Components/Card';
 import Draw from '../Components/Draw';
+import NotifyProvider from '../Context/NotifyProvider';
 
 function App() {
     const client = new ApolloClient({ uri: 'http://localhost:3001/graphql' });
@@ -25,15 +26,17 @@ function App() {
     return (
         <ThemeProvider theme={theme}>
             <ApolloProvider client={client}>
-                <GradientBackground>
-                    <MainContainer>
-                        <LogoWithSubtitle />
-                        <Title />
-                        <Card />
-                        <Draw />
-                        <BritoLogo />
-                    </MainContainer>
-                </GradientBackground>
+                <NotifyProvider>
+                    <GradientBackground>
+                        <MainContainer>
+                            <LogoWithSubtitle />
+                            <Title />
+                            <Card />
+                            <Draw />
+                            <BritoLogo />
+                        </MainContainer>
+                    </GradientBackground>
+                </NotifyProvider>
             </ApolloProvider>
         </ThemeProvider>
     );

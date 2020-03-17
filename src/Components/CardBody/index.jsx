@@ -1,11 +1,12 @@
+import { useLazyQuery, useQuery } from '@apollo/react-hooks';
 import { TextField, Typography } from '@material-ui/core';
-import React, { useCallback, useState, useEffect } from 'react';
-import { useQuery, useLazyQuery } from '@apollo/react-hooks';
 import { gql } from 'apollo-boost';
-import { Button, CardBodyFormContainer, WhiteCardBody, PurpleResult, ButtonContainer } from './styled';
-import PlanSelect from '../PlanSelect';
-import Loading from '../Loading';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNotify } from '../../Context/NotifyProvider';
 import { FlexContainer } from '../../Shared';
+import Loading from '../Loading';
+import PlanSelect from '../PlanSelect';
+import { Button, ButtonContainer, CardBodyFormContainer, PurpleResult, WhiteCardBody } from './styled';
 
 const GET_PLANS_QUERY = gql`
     query {
@@ -39,15 +40,34 @@ const GET_PRICE_BY_ORIGIN_AND_DESTINY_QUERY = gql`
 `;
 
 function CardBody() {
-    const { called, loading, data } = useQuery(GET_PLANS_QUERY);
-    const [getPlanById, getPlanByIdResult] = useLazyQuery(GET_PLAN_BY_ID_QUERY);
-    const [getPriceByOriginAndDestiny, getPriceByOriginAndDestinyResult] = useLazyQuery(GET_PRICE_BY_ORIGIN_AND_DESTINY_QUERY);
+    const { called, loading, data } = useQuery(GET_PLANS_QUERY, { errorPolicy: 'all' });
+    const [getPlanById, getPlanByIdResult] = useLazyQuery(GET_PLAN_BY_ID_QUERY, { errorPolicy: 'all' });
+    const [getPriceByOriginAndDestiny, getPriceByOriginAndDestinyResult] = useLazyQuery(GET_PRICE_BY_ORIGIN_AND_DESTINY_QUERY, {
+        errorPolicy: 'all',
+    });
     const [plan, setPlan] = useState('');
     const [origin, setOrigin] = useState('');
     const [destiny, setDestiny] = useState('');
     const [timeSpent, setTimeSpent] = useState('');
     const [finalPriceWithPlan, setFinalPriceWithPlan] = useState(null);
     const [finalPriceWithoutPlan, setFinalPriceWithoutPlan] = useState(null);
+    const [isCalculating, setIsCalculating] = useState(false);
+    const { showError } = useNotify();
+
+    const isLoading = useMemo(
+        () =>
+            (called && loading) ||
+            (getPlanByIdResult.called && getPlanByIdResult.loading) ||
+            (getPriceByOriginAndDestinyResult.called && getPriceByOriginAndDestinyResult.loading),
+        [
+            called,
+            getPlanByIdResult.called,
+            getPlanByIdResult.loading,
+            getPriceByOriginAndDestinyResult.called,
+            getPriceByOriginAndDestinyResult.loading,
+            loading,
+        ],
+    );
 
     const handleOriginChange = useCallback(event => {
         setOrigin(event.target.value);
@@ -77,39 +97,57 @@ function CardBody() {
     }, []);
 
     const calculateFinalPrice = useCallback(() => {
+        setIsCalculating(true);
         if (plan) {
             getPlanById({ variables: { _id: Number(plan) } });
+        } else {
+            showError('Selecione um plano');
         }
 
         if (origin && destiny) {
             getPriceByOriginAndDestiny({ variables: { origin, destiny } });
+        } else {
+            showError('Digite uma origem e destino');
         }
-    }, [destiny, getPlanById, getPriceByOriginAndDestiny, origin, plan]);
+    }, [destiny, getPlanById, getPriceByOriginAndDestiny, origin, plan, showError]);
 
     useEffect(() => {
         const selectedPlan = getPlanByIdResult?.data?.getPlanById;
         const price = getPriceByOriginAndDestinyResult?.data?.getPriceByOriginAndDestiny;
-        if (selectedPlan && price) {
-            const priceWithPlan = price?.pricePerMinute * (timeSpent - selectedPlan?.freeMinutes);
-            if (!Number.isNaN(priceWithPlan) && priceWithPlan >= 0) {
-                setFinalPriceWithPlan(priceWithPlan);
-            } else {
-                setFinalPriceWithPlan('0');
-            }
-            const priceWithoutPlan = price?.pricePerMinute * timeSpent;
-            if (!Number.isNaN(priceWithoutPlan) && priceWithoutPlan >= 0) {
-                setFinalPriceWithoutPlan(priceWithoutPlan);
-            } else {
-                setFinalPriceWithoutPlan('0');
+        if (!isLoading) {
+            if (timeSpent && isCalculating) {
+                const priceWithPlan = price?.pricePerMinute * (timeSpent - selectedPlan?.freeMinutes);
+                if (!Number.isNaN(priceWithPlan) && priceWithPlan >= 0) {
+                    setFinalPriceWithPlan(priceWithPlan);
+                } else {
+                    setFinalPriceWithPlan('0');
+                }
+                const priceWithoutPlan = price?.pricePerMinute * timeSpent;
+                if (!Number.isNaN(priceWithoutPlan) && priceWithoutPlan >= 0) {
+                    setFinalPriceWithoutPlan(priceWithoutPlan);
+                } else {
+                    setFinalPriceWithoutPlan('0');
+                }
+                setIsCalculating(false);
+            } else if (isCalculating) {
+                showError('Digite o tempo gasto');
             }
         }
-    }, [getPlanByIdResult, getPriceByOriginAndDestinyResult, timeSpent]);
+    }, [getPlanByIdResult, getPriceByOriginAndDestinyResult, isCalculating, isLoading, showError, timeSpent]);
 
-    if (
-        (called && loading) ||
-        (getPlanByIdResult.called && getPlanByIdResult.loading) ||
-        (getPriceByOriginAndDestinyResult.called && getPriceByOriginAndDestinyResult.loading)
-    ) {
+    useEffect(() => {
+        if (getPriceByOriginAndDestinyResult?.error?.graphQLErrors?.length) {
+            showError(getPriceByOriginAndDestinyResult.error.graphQLErrors[0].message);
+        }
+    }, [getPriceByOriginAndDestinyResult, showError]);
+
+    useEffect(() => {
+        if (getPlanByIdResult?.error?.graphQLErrors?.length) {
+            showError(getPlanByIdResult.error.graphQLErrors[0].message);
+        }
+    }, [getPlanByIdResult, showError]);
+
+    if (isLoading) {
         return <Loading />;
     }
 
