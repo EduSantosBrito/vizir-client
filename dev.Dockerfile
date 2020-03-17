@@ -4,7 +4,7 @@ WORKDIR /usr/src/app
 
 COPY . .
 
-RUN yarn
+RUN yarn --network-timeout 1000000
 
 EXPOSE 3000
 

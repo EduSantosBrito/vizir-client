@@ -8,7 +8,7 @@ COPY . .
 
 ENV PATH /usr/src/app/node_modules/.bin:$PATH
 
-RUN yarn
+RUN yarn --network-timeout 1000000
 RUN yarn build --production
 
 FROM nginx:1.17.9-alpine
