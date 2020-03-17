@@ -118,7 +118,7 @@ function CardBody() {
             if (timeSpent && isCalculating) {
                 const priceWithPlan = price?.pricePerMinute * (timeSpent - selectedPlan?.freeMinutes);
                 if (!Number.isNaN(priceWithPlan) && priceWithPlan >= 0) {
-                    setFinalPriceWithPlan(priceWithPlan);
+                    setFinalPriceWithPlan(priceWithPlan + priceWithPlan * 0.1);
                 } else {
                     setFinalPriceWithPlan('0');
                 }
